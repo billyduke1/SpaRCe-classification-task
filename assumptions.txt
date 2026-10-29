@@ -1,0 +1,4 @@
+original receptor data paper doesn't say whether the inputs are normalised - may need to rescale later
+The sequence-generation procedure (Appendix 5.5) was interpreted as follows: each round produces two base sequences (one per class) and, for each position, a variant with that odour replaced and the opposite label, giving 8 sequences per round and 24 rounds for 192 sequences. The number of classes (2) was inferred from the stated parameter count.
+Noise drawn independently for every time step, input dimension and presentation; training and test inputs differ only in their noise realisation
+Multiplicative noise can occasionally make inputs negative (~0.04% of entries); the paper’s formula was kept as written, with no clipping.
