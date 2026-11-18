@@ -47,7 +47,7 @@ class Readout:
     def step(self, V, Y):
         grads = self.grads(V, Y)            # every gradient uses the current parameters...
         for name, g in grads.items():       # ...then all parameters are updated together
-            self.params[name] -= self.lrs[name] * g
+            self.params[name] -= self.lrs[name] * len(V) * g   # mean gradient x batch size = summed gradient
 
     def evaluate(self, V, labels):
         y = self.forward(V)

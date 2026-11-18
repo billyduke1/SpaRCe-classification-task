@@ -1,6 +1,7 @@
 """the echo state network reservoir model"""
 
 import numpy as np
+from scipy import sparse
 
 N = 1000 # number of reservoir neurons
 ALPHA = 0.1 # leak rate
@@ -14,7 +15,7 @@ def relu(x):
 
 class Reservoir:
     def __init__(self, n_inputs, input_scale, seed=0,
-                 n=N, alpha=ALPHA, rho=RHO, gamma=GAMMA, p_er=P_ER):
+                 n=N, alpha=ALPHA, rho=RHO, gamma=GAMMA, p_er=P_ER, k_in=7):
         rng = np.random.default_rng(seed)
         self.n = n
         self.alpha = alpha
@@ -30,15 +31,20 @@ class Reservoir:
             mask = rng.random((n, n)) < p_er
             w = rng.standard_normal((n, n)) * mask
             radius = np.max(np.abs(np.linalg.eigvals(w)))
-            if radius > 1e-6:
+            if radius > 0.5:
                 break
         else:
             raise ValueError("Could not build a reservoir with nonzero spectral radius")
         self.w = w / radius
+        self.w_sparse = sparse.csr_matrix(self.w)   # same matrix, storing only the nonzero entries
         self.redraws = attempt # how many networks were rejected
 
-        # input weight matrix - lognormal, one row per reservoir node
+        # input weights: each node listens to k_in randomly chosen glomeruli, lognormal weights
         W_in = rng.lognormal(mean=0.0, sigma=1.0, size=(n, n_inputs))
+        mask_in = np.zeros((n, n_inputs))
+        for i in range(n):
+            mask_in[i, rng.choice(n_inputs, size=k_in, replace=False)] = 1.0
+        W_in = W_in * mask_in
         self.W_in = W_in / W_in.sum(axis=1).mean()
 
 
@@ -56,7 +62,8 @@ class Reservoir:
         states = [] # stores V at every step, only used if return_trajectory is True
 
         for t in range(n_steps):
-            V = (1 - self.alpha) * V + self.alpha * relu(drive_in[:, t] + self.rho * V @ self.w.T)
+            recurrent = (self.w_sparse @ V.T).T     # same as V @ self.w.T, but skips the zeros
+            V = (1 - self.alpha) * V + self.alpha * relu(drive_in[:, t] + self.rho * recurrent)
             if return_trajectory:
                 states.append(V)
 
